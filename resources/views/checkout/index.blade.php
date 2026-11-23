@@ -3,7 +3,7 @@
 @section('content')<h1>Checkout</h1>
 <div class="checkout-layout">
 <div class="card">
-<form method="POST" action="{{ route('checkout.store') }}">@csrf<input type="hidden" name="checkout_token" value="{{ $checkoutToken }}"><label>Nama Penerima<input class="input"
+<form method="POST" action="{{ route('checkout.store') }}">@csrf<label>Nama Penerima<input class="input"
 name="recipient_name" value="{{ old('recipient_name',auth()->user()->name) }}" required>
 </label>
 <label>No. Telepon<input class="input" name="phone" value="{{ old('phone') }}" required>
@@ -25,4 +25,3 @@ number_format($item['lineTotal'],2,',','.') }}</p>@endforeach<hr>
 <p class="muted">Ongkir ditambahkan sesuai ekspedisi yang dipilih.</p>
 </div>
 </div>@endsection
-
