@@ -1,58 +1,235 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Online Sales
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi penjualan online berbasis Laravel 13 dengan dua role pengguna: **Admin** dan **Pelanggan**. Proyek ini dibuat sebagai praktikum lanjutan (Program Studi S1 Sistem Informasi, Universitas Telkom Purwokerto), tidak berhenti pada CRUD sederhana, tetapi membangun alur bisnis lengkap dari master barang sampai validasi pesanan.
 
-## About Laravel
+## Fitur
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+**Admin**
+- Login dan dashboard ringkasan
+- Kelola kategori dan produk (termasuk unggah gambar)
+- Catat barang masuk dan monitoring stok (`stock_movements`)
+- Kelola layanan ekspedisi
+- Lihat transaksi, validasi pesanan, batalkan pesanan, dan perbarui status pengiriman
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**Pelanggan**
+- Registrasi dan login
+- Katalog produk dengan pencarian, filter (kategori, harga, stok), pengurutan, dan pagination
+- Detail produk
+- Keranjang belanja berbasis session
+- Pilih ekspedisi, isi alamat, dan checkout
+- Riwayat dan detail pesanan
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Teknologi
 
-## Learning Laravel
+- PHP 8.3 atau lebih baru
+- Laravel 13.x (Laravel 12 masih bisa dipakai, periksa kompatibilitas versi PHP)
+- MySQL / MariaDB
+- Blade dan CSS sederhana (`public/css/store.css`)
+- Laragon (lingkungan lokal), Composer, Git
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Instalasi
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Prasyarat
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+php -v
+composer -V
+git --version
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Pastikan MySQL/MariaDB aktif.
 
-## Contributing
+### 2. Clone dan install dependensi
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+git clone <url-repository> laravel-online-sales
+cd laravel-online-sales
+composer install
+cp .env.example .env
+php artisan key:generate
+```
 
-## Code of Conduct
+### 3. Buat database
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+mysql -u root -e "CREATE DATABASE laravel_online_sales CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
 
-## Security Vulnerabilities
+### 4. Konfigurasi `.env`
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel_online_sales
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-## License
+### 5. Migrasi, seeder, dan storage
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+php artisan config:clear
+php artisan migrate
+php artisan db:seed
+php artisan storage:link
+```
+
+Seeder membuat akun admin, 3 kategori (Elektronik, Aksesoris, Peralatan Rumah), dan 3 layanan ekspedisi (JNE REG, J&T EZ, SiCepat REG).
+
+### 6. Jalankan aplikasi
+
+```bash
+php artisan serve
+```
+
+Buka `http://127.0.0.1:8000`.
+
+## Akun Latihan
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@example.com` | `Admin12345!` |
+| Pelanggan | Daftar lewat `/register` | Minimal 8 karakter |
+
+> Kredensial admin hanya untuk lingkungan praktikum lokal. Jangan dipakai di production.
+
+## Hak Akses dan Route
+
+| Area | Middleware | Contoh route |
+|---|---|---|
+| Publik | none | `/`, `/produk/{slug}` |
+| Auth | `guest` | `/login`, `/register` |
+| Pelanggan | `auth`, `role:customer` | `/keranjang`, `/checkout`, `/pesanan` |
+| Admin | `auth`, `role:admin` | `/admin`, `/admin/products`, `/admin/orders` |
+
+Pelanggan yang membuka `/admin` mendapat HTTP 403. Admin yang membuka route pelanggan juga ditolak.
+
+Daftar lengkap: `php artisan route:list`.
+
+## Desain Database
+
+| Tabel | Fungsi |
+|---|---|
+| `users` | Akun admin dan pelanggan (kolom `role`) |
+| `categories` | Master kategori produk |
+| `products` | Master barang, harga, stok, status aktif, gambar |
+| `stock_movements` | Audit stok: `IN` (barang masuk / pembatalan), `OUT` (checkout) |
+| `shipping_services` | Master ekspedisi, layanan, estimasi, ongkir |
+| `orders` | Header transaksi, alamat, ongkir snapshot, total, status, validator |
+| `order_items` | Detail item. Nama dan harga disimpan sebagai snapshot saat checkout |
+
+## Alur Bisnis
+
+**Checkout**
+- Berjalan dalam `DB::transaction` dengan `lockForUpdate()` untuk mencegah overselling
+- Harga dan stok dibaca ulang dari database, total dihitung oleh server
+- Membuat order `pending`, `order_items`, mengurangi stok, dan mencatat `stock_movements` tipe `OUT` dengan reference kode order
+- Session cart dikosongkan setelah berhasil
+
+**Status pesanan**
+
+```
+pending → confirmed → processed → shipped → completed
+```
+
+- `confirm`: `pending` menjadi `confirmed`
+- `status`: hanya transisi `confirmed → processed → shipped → completed`
+- `cancel`: hanya dari `pending` atau `confirmed`. Stok dikembalikan dan dicatat `IN` dengan reference `CANCEL-<kode order>`
+
+## Struktur Proyek
+
+```
+app/
+├── Http/
+│   ├── Controllers/
+│   │   ├── Admin/ (Category, Dashboard, Order, Product, ShippingService, Stock)
+│   │   ├── AuthController.php
+│   │   ├── CartController.php
+│   │   ├── CheckoutController.php
+│   │   ├── CustomerOrderController.php
+│   │   └── ProductCatalogController.php
+│   ├── Middleware/RoleMiddleware.php
+│   └── Requests/ (Checkout, StoreProduct, StoreStockIn, UpdateProduct)
+└── Models/ (Category, Order, OrderItem, Product, ShippingService, StockMovement, User)
+database/
+├── migrations/
+└── seeders/ (AdminUserSeeder, MasterDataSeeder, DatabaseSeeder)
+resources/views/ (layouts, auth, shop, cart, checkout, orders, admin)
+routes/web.php
+```
+
+## Workflow Git
+
+Pengembangan memakai branch per milestone, merge dengan `--no-ff`, dan tag di setiap akhir milestone.
+
+| Milestone | Fokus | Tag |
+|---|---|---|
+| M0 | Setup Laravel, database, repository | `m0-setup` |
+| M1 | Autentikasi dan role | `m1-auth-role` |
+| M2 | Kategori, produk, upload gambar | `m2-master-product` |
+| M3 | Barang masuk, stok, ekspedisi | `m3-inventory-shipping` |
+| M4 | Katalog, detail, filter, pagination | `m4-storefront` |
+| M5 | Session cart | `m5-cart` |
+| M6 | Checkout, order, stok OUT | `m6-checkout` |
+| M7 | Admin transaksi, validasi, cancel, status | `m7-order-admin` |
+| M8 | QA, data uji, dokumentasi | `m8-final` |
+
+```bash
+git checkout main
+git checkout -b milestone/01-auth-role
+# kerjakan dan commit
+git checkout main
+git merge --no-ff milestone/01-auth-role
+git tag m1-auth-role
+```
+
+Lihat riwayat: `git log --oneline --graph --decorate --all`.
+
+## Pengujian Manual
+
+| No | Skenario | Hasil yang diharapkan |
+|---|---|---|
+| 1 | Pelanggan registrasi | Akun tersimpan `role=customer` dan langsung login |
+| 2 | Pelanggan membuka `/admin` | HTTP 403 |
+| 3 | Admin login | Masuk dashboard admin |
+| 4 | Admin tambah kategori dan produk | Produk tampil di admin dan katalog jika aktif |
+| 5 | Admin upload gambar | Gambar tersimpan di public storage dan tampil di katalog |
+| 6 | Admin stock-in 10 unit | Stok +10, movement `IN` tercatat |
+| 7 | Pelanggan filter produk | Hasil sesuai keyword, kategori, harga, stok, urutan |
+| 8 | Tambah cart melebihi stok | Validasi menolak |
+| 9 | Checkout 2 unit | Order `pending`, stok -2, movement `OUT` tercatat |
+| 10 | Admin confirm | Status `confirmed`, validator dan waktu validasi tersimpan |
+| 11 | Admin cancel pending/confirmed | Status `cancelled`, stok kembali, movement `IN` tercatat |
+| 12 | Ubah status order | Hanya urutan `confirmed → processed → shipped → completed` yang diterima |
+
+Perintah pemeriksaan:
+
+```bash
+php artisan route:list
+php artisan migrate:status
+php artisan model:show Product
+php artisan model:show Order
+php artisan about
+```
+
+## Keamanan Dasar
+
+- Semua form POST/PATCH/DELETE memakai `@csrf`
+- Route admin dan pelanggan dipisah dengan `auth` dan `role:*`
+- Upload gambar divalidasi sebagai `image` dengan batas ukuran
+- Total order dihitung ulang oleh server, bukan dari input browser
+- Checkout memakai DB transaction dan `lockForUpdate()`
+- `CustomerOrderController` memeriksa kepemilikan order
+
+## Troubleshooting
+
+- **Gambar tidak tampil**: jalankan `php artisan storage:link`
+- **Perubahan `.env` tidak terbaca**: jalankan `php artisan config:clear`
+- **Error `Undefined variable` di Blade**: pastikan variabel dikirim dari controller, lalu `php artisan view:clear`
+- **HTTP 403 di halaman checkout atau keranjang**: login sebagai akun `customer`, bukan admin
+
+## Penulis
+
+Muhammad Taqiy Mumtaz\
+10906250013
