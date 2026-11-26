@@ -1,0 +1,33 @@
+$kind: http-request
+url: "{{base_url}}/checkout"
+method: POST
+headers:
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: "{{customer_token}}"
+body:
+  type: json
+  content: "{ \r
+
+    \  \"recipient_name\": \"Budi Customer\", \r
+
+    \  \"phone\": \"081234567890\", \r
+
+    \  \"address\": \"Jl. Praktikum No. 10, Purwokerto\", \r
+
+    \  \"shipping_service_id\": 1,\r
+
+    \  \"items\": [ \r
+
+    \    {\"product_id\": 4, \"quantity\": 1}\r
+
+    \  ] \r
+
+    }"
+auth:
+  type: bearer
+  credentials:
+    token: "{{customer_token}}"
+settings:
+  followRedirects: true
+order: 4000
