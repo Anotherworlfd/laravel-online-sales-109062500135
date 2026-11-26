@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{base_url}}/auth/login"
+method: POST
+headers:
+  Authorization: ""
+body:
+  type: json
+  content: "{ \r
+
+    \  \"email\": \"admin@example.com\", \r
+
+    \  \"password\": \"Admin12345!\", \r
+
+    \  \"device_name\": \"Postman Admin\" \r
+
+    }"
+order: 5000

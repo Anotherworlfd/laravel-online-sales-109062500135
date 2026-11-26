@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/products?ready=1&sort=price_asc "
+method: GET
+queryParams:
+  ready: "1"
+  sort: "price_asc "
+order: 1000
