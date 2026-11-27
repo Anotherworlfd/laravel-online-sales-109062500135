@@ -1,6 +1,8 @@
 # Laravel Online Sales
 
-Aplikasi penjualan online berbasis Laravel 13 dengan dua role pengguna: **Admin** dan **Pelanggan**. Proyek ini dibuat sebagai praktikum lanjutan (Program Studi S1 Sistem Informasi, Universitas Telkom Purwokerto), tidak berhenti pada CRUD sederhana, tetapi membangun alur bisnis lengkap dari master barang sampai validasi pesanan.
+Aplikasi penjualan online berbasis Laravel 13 dengan dua role pengguna: **Admin** dan **Pelanggan**. Proyek ini dibuat sebagai praktikum lanjutan (Program Studi S1 Sistem Informasi, Universitas Telkom Purwokerto), tidak berhenti pada CRUD sederhana, tetapi membangun alur bisnis lengkap dari master barang sampai validasi pesanan, lalu dikembangkan menjadi REST API dengan token Sanctum, pengujian otomatis, dan deployment cloud.
+
+**Production:** https://laravel-online-sales-109062500135.vercel.app
 
 ## Fitur
 
@@ -19,6 +21,12 @@ Aplikasi penjualan online berbasis Laravel 13 dengan dua role pengguna: **Admin*
 - Pilih ekspedisi, isi alamat, dan checkout
 - Riwayat dan detail pesanan
 
+**REST API (`/api/v1`)**
+- Autentikasi token (Laravel Sanctum): login, me, logout
+- Publik: produk, kategori, ekspedisi
+- Pelanggan: checkout, riwayat/detail pesanan, pembatalan pesanan `pending`
+- Admin: daftar transaksi, detail, konfirmasi, ubah status, pembatalan
+
 ## Teknologi
 
 - PHP 8.3 atau lebih baru
@@ -26,6 +34,8 @@ Aplikasi penjualan online berbasis Laravel 13 dengan dua role pengguna: **Admin*
 - MySQL / MariaDB
 - Blade dan CSS sederhana (`public/css/store.css`)
 - Laragon (lingkungan lokal), Composer, Git
+- Laravel Sanctum, Postman, Laravel Feature Test
+- Docker (FrankenPHP), Vercel, Railway MySQL
 
 ## Instalasi
 
@@ -83,7 +93,7 @@ Seeder membuat akun admin, 3 kategori (Elektronik, Aksesoris, Peralatan Rumah), 
 php artisan serve
 ```
 
-Buka `http://127.0.0.1:8000`.
+Buka `http://127.0.0.1:8000`. Base URL API lokal: `http://127.0.0.1:8000/api/v1`.
 
 ## Akun Latihan
 
@@ -107,11 +117,50 @@ Pelanggan yang membuka `/admin` mendapat HTTP 403. Admin yang membuka route pela
 
 Daftar lengkap: `php artisan route:list`.
 
+## REST API
+
+Prefix `/api/v1`, respons JSON. Kirim header `Accept: application/json`; endpoint terproteksi memakai `Authorization: Bearer <token>` dari hasil login.
+
+| Method | URL | Akses | Keterangan |
+|---|---|---|---|
+| GET | `/products`, `/products/{slug}` | Publik | Produk aktif |
+| GET | `/categories`, `/shipping-services` | Publik | Kategori dan ekspedisi |
+| POST | `/auth/login` | Publik | Mengembalikan `access_token` |
+| GET | `/auth/me` | Token | Profil user |
+| POST | `/auth/logout` | Token | Cabut token aktif |
+| POST | `/checkout` | Customer | Order `pending`, stok berkurang |
+| GET | `/orders`, `/orders/{order}` | Customer | Riwayat dan detail (milik sendiri) |
+| PATCH | `/orders/{order}/cancel` | Customer | Batalkan order `pending` milik sendiri |
+| GET | `/admin/orders`, `/admin/orders/{order}` | Admin | Daftar dan detail transaksi |
+| PATCH | `/admin/orders/{order}/confirm` | Admin | `pending` menjadi `confirmed` |
+| PATCH | `/admin/orders/{order}/status` | Admin | `processed`, `shipped`, `completed` |
+| PATCH | `/admin/orders/{order}/cancel` | Admin | Batalkan `pending`/`confirmed` |
+
+### Endpoint tambahan: Customer Cancel Order
+
+`PATCH /api/v1/orders/{order}/cancel` (Bearer token, role customer, tanpa request body)
+
+- Hanya order `pending` milik sendiri. Stok dikembalikan, movement `IN` dengan reference `CANCEL-<kode order>`.
+
+| Status | Penyebab |
+|---|---|
+| 200 | Berhasil, `data.status` = `cancelled` |
+| 401 | Tanpa token atau token tidak valid |
+| 403 | Token bukan role customer |
+| 404 | Order tidak ada atau milik user lain |
+| 409 | Status order bukan `pending` |
+
+### Kode status umum
+
+200/201 berhasil, 401 belum login, 403 role tidak berhak, 404 tidak ditemukan atau bukan milik user, 409 transisi status tidak valid, 422 validasi gagal.
+
 ## Desain Database
 
 | Tabel | Fungsi |
 |---|---|
 | `users` | Akun admin dan pelanggan (kolom `role`) |
+| `personal_access_tokens` | Token Sanctum untuk REST API |
+| `sessions`, `cache` | Session dan cache di database (container production tanpa state) |
 | `categories` | Master kategori produk |
 | `products` | Master barang, harga, stok, status aktif, gambar |
 | `stock_movements` | Audit stok: `IN` (barang masuk / pembatalan), `OUT` (checkout) |
@@ -135,7 +184,8 @@ pending → confirmed → processed → shipped → completed
 
 - `confirm`: `pending` menjadi `confirmed`
 - `status`: hanya transisi `confirmed → processed → shipped → completed`
-- `cancel`: hanya dari `pending` atau `confirmed`. Stok dikembalikan dan dicatat `IN` dengan reference `CANCEL-<kode order>`
+- `cancel` (admin): hanya dari `pending` atau `confirmed`. Stok dikembalikan dan dicatat `IN` dengan reference `CANCEL-<kode order>`
+- `cancel` (customer, API): hanya dari `pending` dan hanya order miliknya
 
 ## Struktur Proyek
 
@@ -144,6 +194,7 @@ app/
 ├── Http/
 │   ├── Controllers/
 │   │   ├── Admin/ (Category, Dashboard, Order, Product, ShippingService, Stock)
+│   │   ├── Api/V1/ (Auth, Product, Checkout, CustomerOrder, Admin/Order)
 │   │   ├── AuthController.php
 │   │   ├── CartController.php
 │   │   ├── CheckoutController.php
@@ -156,7 +207,101 @@ database/
 ├── migrations/
 └── seeders/ (AdminUserSeeder, MasterDataSeeder, DatabaseSeeder)
 resources/views/ (layouts, auth, shop, cart, checkout, orders, admin)
-routes/web.php
+routes/
+├── web.php
+└── api.php
+tests/Feature/Api/
+postman/
+docs/
+Dockerfile.vercel, Caddyfile, vercel.json, .dockerignore
+```
+
+## Riwayat Tag
+
+```
+m0-setup        chore: initialize Laravel online sales project
+m1-auth-role    Merge branch 'milestone/01-auth-role'
+m10-api-tested  add untracked files
+m11-vercel-live merge: milestone M11 Vercel deployment
+m12-extra-endpoint feat(api): customer cancel pending order
+m2-master-product t tag m2-master-product
+m3-inventory-shipping Merge branch 'milestone/03-inventory-shipping'
+m4-storefront   Merge branch 'milestone/04-storefront'
+m5-cart         Merge branch 'milestone/05-cart'
+m6-checkout     Merge branch 'milestone/06-checkout'
+m7-order-admin  Merge branch 'milestone/07-order-admin'
+m8-final        t tag m8-final
+m9-rest-api     merge: milestone M9 REST API
+
+```
+
+## Riwayat commit
+```
+* 95fe1b1 (HEAD -> main, tag: m12-extra-endpoint, origin/main) feat(api): customer cancel pending order
+
+* 95fe1b1 (HEAD -> main, tag: m12-extra-endpoint, origin/main) feat(api): customer cancel pending order
+* 95fe1b1 (HEAD -> main, tag: m12-extra-endpoint, origin/main) feat(api): customer cancel pending order
+*   2c5599f (tag: m11-vercel-live, feature/customer-cancel-order) merge: milestone M11 Vercel deployment
+|\
+| * 1dad799 (milestone/m11-vercel-deployment) docs(deploy): add production environment notes
+| * 5e77dc7 (origin/milestone/m11-vercel-deployment) fix(deploy): force https and trust proxies
+| * 8e66e15 chore(deploy): add Vercel container configuration
+|/
+* 92a738d (tag: m10-api-tested) add untracked files
+*   2410309 merge: milestone M10 API testing
+|\
+| * f817869 (milestone/m10-api-testing) test(api): add Postman collection for REST API
+| * cceae7c test(api): add catalog auth and checkout feature tests
+|/
+*   b1b86a2 (tag: m9-rest-api) merge: milestone M9 REST API
+|\
+| * ac522fe (milestone/m9-rest-api) feat(api): add catalog auth checkout and order endpoints
+| * 55a2eaf feat(api): add API requests and JSON resources
+| * b12a2aa feat(api): install Sanctum and enable API routing
+|/
+* 7038641 edit: README.md
+*   24b9151 (tag: m8-final) t tag m8-final Merge branch 'milestone/08-qa'
+|\
+| * 8e6f657 (milestone/08-qa) fix: resolve final QA findings
+|/
+* 8851310 fix: checkout/index.blade.php
+* f2ce87a docs: fix productcontroller
+*   2a354e6 (tag: m7-order-admin) Merge branch 'milestone/07-order-admin' t tag m7-order-admin
+|\
+| * c6f57b5 (milestone/07-order-admin) feat(order): add order status workflow and stock rollback on cancel
+| * 8cce9c1 feat(admin): add transaction dashboard and order validation
+|/
+*   377df28 (tag: m6-checkout) Merge branch 'milestone/06-checkout' t tag m6-checkout
+|\
+| * 8f114b0 (milestone/06-checkout) feat(checkout): add transactional checkout and customer order history 
+| * c17f00b feat(order): add order schema and relationships
+|/
+*   545661d (tag: m5-cart) Merge branch 'milestone/05-cart' t tag m5-cart
+|\
+| * f50c538 (milestone/05-cart) feat(cart): add session based shopping cart
+|/
+*   7adad17 (tag: m4-storefront) Merge branch 'milestone/04-storefront' t tag m4-storefront
+|\
+| * cde6b5c (milestone/04-storefront) feat(storefront): add product detail by slug
+| * 8c670b2 feat(storefront): add product catalog filters and pagination
+|/
+*   7f2a47b (tag: m3-inventory-shipping) Merge branch 'milestone/03-inventory-shipping' t tag m3-inventory-shipping
+|\
+| * 28bc4cc (milestone/03-inventory-shipping) feat(shipping): add shipping service management
+| * d76372a feat(inventory): add stock movement and stock-in transaction
+|/
+*   5ab6b7a (tag: m2-master-product) t tag m2-master-product Merge branch 'milestone/02-master-product'
+|\
+| * 2987fe9 (milestone/02-master-product) feat(admin): add category management
+| * 14b04da feat(admin): add product management with image upload
+| * bcba497 feat(catalog): add category and product schema
+|/
+*   a9d8d13 (tag: m1-auth-role) Merge branch 'milestone/01-auth-role'
+|\
+| * 6e74bb4 (milestone/01-auth-role) feat(auth): add role middleware and admin seeder
+| * 337170f feat(auth): add customer registration and login
+|/
+* 0ca368f (tag: m0-setup) chore: initialize Laravel online sales project
 ```
 
 ## Workflow Git
@@ -174,6 +319,10 @@ Pengembangan memakai branch per milestone, merge dengan `--no-ff`, dan tag di se
 | M6 | Checkout, order, stok OUT | `m6-checkout` |
 | M7 | Admin transaksi, validasi, cancel, status | `m7-order-admin` |
 | M8 | QA, data uji, dokumentasi | `m8-final` |
+| M9 | REST API dengan Sanctum | `<tag M9>` |
+| M10 | Pengujian API (Postman, Feature Test) | `m10-api-tested` |
+| M11 | Deployment Vercel dan Railway | `m11-vercel-live` |
+| M12 | Endpoint tambahan customer cancel order | `m12-extra-endpoint` |
 
 ```bash
 git checkout main
@@ -213,6 +362,28 @@ php artisan model:show Order
 php artisan about
 ```
 
+## Pengujian API
+
+**Postman** (folder `postman/`): atur variable collection `base_url` ke `http://127.0.0.1:8000/api/v1` (lokal) atau `https://laravel-online-sales-109062500135.vercel.app/api/v1` (production). `customer_token`, `admin_token`, dan `order_id` terisi otomatis oleh script post-response.
+
+**Feature Test:**
+
+```bash
+php artisan test
+php artisan test --filter=CustomerCancelOrderTest
+```
+
+> Test memakai `RefreshDatabase`. Pastikan variable `DB_*` tidak menunjuk ke database cloud sebelum menjalankan test.
+
+## Deployment
+
+- Hosting: Vercel (Container Runtime) dengan `Dockerfile.vercel`, `Caddyfile` (FrankenPHP), dan `vercel.json`
+- Database: Railway MySQL; migrasi dengan `php artisan migrate --force` dari lokal
+- Environment production: `APP_ENV=production`, `APP_DEBUG=false`, `APP_KEY`, `APP_URL`, `DB_*`, `SESSION_DRIVER=database`, `CACHE_STORE=database`, `LOG_CHANNEL=stderr`
+- `trustProxies` dan `URL::forceScheme('https')` aktif di production
+- `APP_KEY`, password database, dan token tidak boleh masuk repository
+- Penyimpanan file container sementara, sehingga gambar produk yang diunggah tidak persisten di production
+
 ## Keamanan Dasar
 
 - Semua form POST/PATCH/DELETE memakai `@csrf`
@@ -221,6 +392,7 @@ php artisan about
 - Total order dihitung ulang oleh server, bukan dari input browser
 - Checkout memakai DB transaction dan `lockForUpdate()`
 - `CustomerOrderController` memeriksa kepemilikan order
+- API memakai token Sanctum dan middleware `role`; order milik user lain dijawab 404
 
 ## Troubleshooting
 
@@ -228,6 +400,9 @@ php artisan about
 - **Perubahan `.env` tidak terbaca**: jalankan `php artisan config:clear`
 - **Error `Undefined variable` di Blade**: pastikan variabel dikirim dari controller, lalu `php artisan view:clear`
 - **HTTP 403 di halaman checkout atau keranjang**: login sebagai akun `customer`, bukan admin
+- **API mengembalikan HTML (halaman login)**: tambahkan header `Accept: application/json` dan pastikan token Bearer valid
+- **Aplikasi lokal membaca database cloud**: `$env:DB_*` masih aktif di terminal; hapus dengan `Remove-Item Env:DB_*` lalu `php artisan config:clear`
+- **CSS tidak tampil di production**: pastikan `URL::forceScheme('https')` dan `trustProxies` aktif, lalu redeploy
 
 ## Penulis
 
